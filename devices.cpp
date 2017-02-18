@@ -4,6 +4,7 @@
 
 #include <iostream>
 #include <vulkan/vulkan.h>
+#include <vector>
 
 using namespace std;
 
@@ -44,6 +45,44 @@ void initInstance() {
     }
 }
 
+const char* deviceType(VkPhysicalDeviceType type) {
+    switch (type) {
+        case VK_PHYSICAL_DEVICE_TYPE_CPU:
+            return "CPU";
+
+        case VK_PHYSICAL_DEVICE_TYPE_INTEGRATED_GPU:
+            return "GPU (integrated)";
+
+        case VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU:
+            return "GPU (discrete)";
+
+        case VK_PHYSICAL_DEVICE_TYPE_VIRTUAL_GPU:
+            return "GPU (virtual)";
+
+        case VK_PHYSICAL_DEVICE_TYPE_OTHER:
+            return "Other";
+
+        default:
+            return "Unknown";
+    }
+}
+
+const char* vendorIDStr(uint32_t id) {
+    switch (id) {
+        case 0x1002:
+            return "AMD";
+
+        case 0x10DE:
+            return "NVidia";
+
+        case 0x8086:
+            return "Intel";
+
+        default:
+            return "Other";
+    }
+}
+
 int main() {
     initInstance();
 
@@ -59,6 +98,27 @@ int main() {
     }
 
     cout << "Found " << dev_count << " devices" << endl;
+    //VkPhysicalDevice *devices = new VkPhysicalDevice[dev_count];
+    vector<VkPhysicalDevice> devices;
+    devices.resize(dev_count);
+    res = vkEnumeratePhysicalDevices(inst, &dev_count, devices.data());
+    if (res) {
+        cout << "error enumerating devices" << endl;
+        vkDestroyInstance(inst, NULL);
+        exit(-1);
+    }
+
+    VkPhysicalDeviceProperties prop;
+
+    for (int i = 0; i < dev_count; ++i) {
+        vkGetPhysicalDeviceProperties(devices[i], &prop);
+        cout << "===" << endl;
+        cout << "Name: " << prop.deviceName << endl;
+        cout << "Type: " << deviceType(prop.deviceType) << endl;
+        cout << "Vendor ID: " << hex << prop.vendorID << " (" << vendorIDStr(prop.vendorID) << ")" << endl;
+        cout << "Device ID: " << hex << prop.deviceID << endl;
+        cout << endl;
+    }
 
     vkDestroyInstance(inst, NULL);
 
