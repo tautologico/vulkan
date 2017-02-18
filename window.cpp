@@ -1,0 +1,7 @@
+//
+// Creating a simple window
+//
+
+
+
+
