@@ -83,6 +83,28 @@ const char* vendorIDStr(uint32_t id) {
     }
 }
 
+void printDeviceProperties(VkPhysicalDevice& dev) {
+    VkPhysicalDeviceProperties prop;
+
+    vkGetPhysicalDeviceProperties(dev, &prop);
+    cout << "Name: " << prop.deviceName << endl;
+    cout << "Type: " << deviceType(prop.deviceType) << endl;
+    cout << "Vendor ID: " << hex << prop.vendorID << " (" << vendorIDStr(prop.vendorID) << ")" << endl;
+    cout << "Device ID: " << hex << prop.deviceID << endl;
+    cout << endl;
+}
+
+void printQueueFlags(VkQueueFlags flags) {
+    if (flags & VK_QUEUE_COMPUTE_BIT)
+        cout << "compute ";
+    if (flags & VK_QUEUE_GRAPHICS_BIT)
+        cout << "graphics ";
+    if (flags & VK_QUEUE_TRANSFER_BIT)
+        cout << "blit ";
+    if (flags & VK_QUEUE_SPARSE_BINDING_BIT)
+        cout << "sparsebind";
+}
+
 int main() {
     initInstance();
 
@@ -97,8 +119,7 @@ int main() {
         exit(-1);
     }
 
-    cout << "Found " << dev_count << " devices" << endl;
-    //VkPhysicalDevice *devices = new VkPhysicalDevice[dev_count];
+    cout << "Found " << dev_count << " devices" << endl << endl;
     vector<VkPhysicalDevice> devices;
     devices.resize(dev_count);
     res = vkEnumeratePhysicalDevices(inst, &dev_count, devices.data());
@@ -108,18 +129,28 @@ int main() {
         exit(-1);
     }
 
-    VkPhysicalDeviceProperties prop;
-
     for (int i = 0; i < dev_count; ++i) {
-        vkGetPhysicalDeviceProperties(devices[i], &prop);
-        cout << "===" << endl;
-        cout << "Name: " << prop.deviceName << endl;
-        cout << "Type: " << deviceType(prop.deviceType) << endl;
-        cout << "Vendor ID: " << hex << prop.vendorID << " (" << vendorIDStr(prop.vendorID) << ")" << endl;
-        cout << "Device ID: " << hex << prop.deviceID << endl;
-        cout << endl;
+        cout << "=== Device #" << i << endl;
+        printDeviceProperties(devices[i]);
+
+        // queues
+        uint32_t nFamilies;
+        vkGetPhysicalDeviceQueueFamilyProperties(devices[i], &nFamilies, nullptr);
+        cout << "  Found " << nFamilies << " queue families for device " << i << endl;
+        vector<VkQueueFamilyProperties> queueProps;
+        queueProps.resize(nFamilies);
+        vkGetPhysicalDeviceQueueFamilyProperties(devices[i], &nFamilies, queueProps.data());
+        for (int j = 0; j < nFamilies; ++j) {
+            cout << "  --- Queue family #" << j << endl;
+            cout << "  Queue count: " << queueProps[j].queueCount << endl;
+            cout << "  Flags: ";
+            printQueueFlags(queueProps[j].queueFlags);
+            cout << endl;
+        }
     }
 
+
+    //VkQueueFamilyProperties
     vkDestroyInstance(inst, NULL);
 
     return 0;
