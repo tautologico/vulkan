@@ -16,7 +16,9 @@ endif()
 set(SOURCE_FILES window.cpp)
 #add_executable(window window.cpp instance.cpp)
 add_executable(instance instance.cpp)
+add_executable(devices devices.cpp)
 
 include_directories(${VULKAN_INCLUDE_DIR})
 target_link_libraries(instance ${Vulkan_LIB})
+target_link_libraries(devices ${Vulkan_LIB})
 
