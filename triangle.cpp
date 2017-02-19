@@ -4,6 +4,7 @@
 
 #include <iostream>
 #include <vulkan/vulkan.h>
+#include <vector>
 
 using namespace std;
 
@@ -60,7 +61,77 @@ int main() {
 
     cout << "Found " << dev_count << " devices" << endl;
 
-    vkDestroyInstance(inst, NULL);
+    if (dev_count == 0) {
+        cout << "No compatible devices found, terminating" << endl;
+        exit(-2);
+    }
+
+    vector<VkPhysicalDevice> devices;
+    devices.resize(dev_count);
+    res = vkEnumeratePhysicalDevices(inst, &dev_count, devices.data());
+    if (res) {
+        cout << "error enumerating devices" << endl;
+        vkDestroyInstance(inst, NULL);
+        exit(-1);
+    }
+
+    // seleciona o primeiro dispositivo encontrado
+    VkPhysicalDevice& dev = devices[0];
+
+    uint32_t nFamilies;
+    vkGetPhysicalDeviceQueueFamilyProperties(dev, &nFamilies, nullptr);
+    cout << "  Found " << nFamilies << " queue families for selected device" << endl;
+    vector<VkQueueFamilyProperties> queueProps;
+    queueProps.resize(nFamilies);
+    vkGetPhysicalDeviceQueueFamilyProperties(dev, &nFamilies, queueProps.data());
+
+    // procura uma familia de filas com capacidade para graficos
+    VkDeviceQueueCreateInfo queueInfo;
+
+    bool found = false;
+    for (unsigned int i = 0; i < nFamilies; ++i) {
+        if (queueProps[i].queueFlags & VK_QUEUE_GRAPHICS_BIT) {
+            found = true;
+            queueInfo.queueFamilyIndex = i;
+            break;
+        }
+    }
+
+    if (not found) {
+        cout << "Could not find a graphics-capable queue family" << endl;
+        vkDestroyInstance(inst, nullptr);
+        exit(-1);
+    }
+
+    float priorities[1] = { 0.0f };
+    queueInfo.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
+    queueInfo.pNext = nullptr;
+    queueInfo.queueCount = 1;
+    queueInfo.pQueuePriorities = priorities;
+
+    VkDeviceCreateInfo devInfo = {};
+    devInfo.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
+    devInfo.pNext = nullptr;
+    devInfo.queueCreateInfoCount = 1;
+    devInfo.pQueueCreateInfos = &queueInfo;
+    devInfo.enabledExtensionCount = 0;
+    devInfo.ppEnabledExtensionNames = nullptr;
+    devInfo.enabledLayerCount = 0;
+    devInfo.ppEnabledLayerNames = nullptr;
+    devInfo.pEnabledFeatures = nullptr;
+
+    VkDevice device;
+    res = vkCreateDevice(dev, &devInfo, nullptr, &device);
+    if (res) {
+        cout << "Error creating logical device" << endl;
+        vkDestroyInstance(inst, nullptr);
+        exit(-1);
+    }
+
+    cout << "Device created successfully" << endl;
+
+    vkDestroyDevice(device, nullptr);
+    vkDestroyInstance(inst, nullptr);
 
     return 0;
 }
